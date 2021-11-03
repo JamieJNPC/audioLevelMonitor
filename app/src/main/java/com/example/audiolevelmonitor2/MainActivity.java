@@ -32,6 +32,8 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 
 import com.example.audiolevelmonitor2.databinding.ActivityMainBinding;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -182,21 +184,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void uploadDataNode(double noiseLevel) {
-        /*
         if(noiseLevel > -1000) {
             long unixTime = System.currentTimeMillis() / 1000L;
-            Noise item = Noise.builder()
-                    .noiselevel(noiseLevel)
-                    .timestamp(new Temporal.Timestamp(unixTime, TimeUnit.SECONDS))
-                    .build();
-            Amplify.DataStore.save(
-                    item,
-                    success -> Log.i("Amplify", "Saved item: " + success.item().getId()),
-                    error -> Log.e("Amplify", "Could not save item to DataStore", error)
-            );
             System.out.println(unixTime + " " + noiseLevel);
+            FirebaseDatabase database = FirebaseDatabase.getInstance("https://noiselevelmonitor-4b7eb-default-rtdb.europe-west1.firebasedatabase.app/");
+            DatabaseReference myRef = database.getReference(unixTime + "");
+            myRef.setValue(noiseLevel);
         }
-         */
+
     }
 
     class RecordButton extends androidx.appcompat.widget.AppCompatButton {
