@@ -1,0 +1,46 @@
+# this is an auto generated file. This will be overwritten
+mutation CreateNoise(
+  $input: CreateNoiseInput!
+  $condition: ModelNoiseConditionInput
+) {
+  createNoise(input: $input, condition: $condition) {
+    id
+    noiselevel
+    timestamp
+    _version
+    _deleted
+    _lastChangedAt
+    createdAt
+    updatedAt
+  }
+}
+mutation UpdateNoise(
+  $input: UpdateNoiseInput!
+  $condition: ModelNoiseConditionInput
+) {
+  updateNoise(input: $input, condition: $condition) {
+    id
+    noiselevel
+    timestamp
+    _version
+    _deleted
+    _lastChangedAt
+    createdAt
+    updatedAt
+  }
+}
+mutation DeleteNoise(
+  $input: DeleteNoiseInput!
+  $condition: ModelNoiseConditionInput
+) {
+  deleteNoise(input: $input, condition: $condition) {
+    id
+    noiselevel
+    timestamp
+    _version
+    _deleted
+    _lastChangedAt
+    createdAt
+    updatedAt
+  }
+}
