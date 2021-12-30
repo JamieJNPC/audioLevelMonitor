@@ -1,10 +1,14 @@
 package com.example.audiolevelmonitor2;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
@@ -22,6 +26,7 @@ import android.util.Log;
 import android.view.View;
 
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
@@ -58,8 +63,9 @@ public class MainActivity extends AppCompatActivity {
     private ParcelFileDescriptor file;
     private RecordButton recordButton = null;
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
+    private static final int REQUEST_FINE_LOCATION = 101;
     private boolean permissionToRecordAccepted = false;
-    private String [] permissions = {Manifest.permission.RECORD_AUDIO};
+    private String [] permissions = {Manifest.permission.RECORD_AUDIO, Manifest.permission.ACCESS_FINE_LOCATION};
     private double db = 0;
     private boolean isRecording = false;
     @Override
@@ -67,8 +73,10 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         switch (requestCode){
             case REQUEST_RECORD_AUDIO_PERMISSION:
+            case REQUEST_FINE_LOCATION:
                 permissionToRecordAccepted  = grantResults[0] == PackageManager.PERMISSION_GRANTED;
                 break;
+
         }
         if (!permissionToRecordAccepted ) finish();
 
@@ -78,8 +86,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
-
+        ActivityCompat.requestPermissions(this, permissions, REQUEST_FINE_LOCATION);
         LinearLayout ll = new LinearLayout(this);
         recordButton = new RecordButton(this);
         ll.addView(recordButton,
@@ -133,34 +140,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private final Runnable recordAudioLevel = new Runnable() {
+        @SuppressLint("MissingPermission")
         public void run() {
             try {
-                ContentValues values = new ContentValues(4);
-                values.put(MediaStore.Audio.Media.DISPLAY_NAME, csvFileName);
-                values.put(MediaStore.Audio.Media.DATE_ADDED, (int) (System.currentTimeMillis() / 1000));
-                values.put(MediaStore.Audio.Media.MIME_TYPE, "text/csv");
-                values.put(MediaStore.Audio.Media.RELATIVE_PATH, "");
-
-                Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
-                file = getContentResolver().openFileDescriptor(uri, "w");
-                FileWriter fw = new FileWriter(file.getFileDescriptor());
-                BufferedWriter bw = new BufferedWriter(fw);
-                bw.write("Timestamp,Decibels\n");
                 while (isRecording) {
+                    LocationManager lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+                    Location location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                    double longitude, latitude;
+                    if(location != null) {
+                        latitude = location.getLatitude();
+                        longitude = location.getLongitude();
+                    }
+                    else {
+                        latitude = 0.0;
+                        longitude = 0.0;
+                    }
                     db = 20 * Math.log10(recorder.getMaxAmplitude() / 2700.0);
-
-                    Date c = Calendar.getInstance().getTime();
-                    SimpleDateFormat df = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss:SS", Locale.getDefault());
-                    String formattedDate = df.format(c);
-
-                    bw.write(formattedDate + "," + db + "\n");
-                    bw.flush();
-                    System.out.println(formattedDate + ", " + db);
                     Thread.sleep(1000);
-                    uploadDataNode((double) db);
+                    uploadDataNode((double) db, longitude, latitude);
                 }
-                bw.close();
-                fw.close();
             } catch (Exception e) {
                 System.out.println(e);
             }
@@ -183,13 +181,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void uploadDataNode(double noiseLevel) {
-        if(noiseLevel > -1000) {
+    public void uploadDataNode(double noiseLevel, double longitude, double latitude) {
+        if(noiseLevel > -1000 && longitude != 0.0) {
             long unixTime = System.currentTimeMillis() / 1000L;
-            System.out.println(unixTime + " " + noiseLevel);
+            System.out.println(unixTime + " " + noiseLevel + " " + longitude + " " + latitude);
             FirebaseDatabase database = FirebaseDatabase.getInstance("https://noiselevelmonitor-4b7eb-default-rtdb.europe-west1.firebasedatabase.app/");
-            DatabaseReference myRef = database.getReference(unixTime + "");
-            myRef.setValue(noiseLevel);
+            DatabaseReference myRef = database.getReference("noise/" + unixTime);
+            myRef.setValue(noiseLevel + " " + longitude + " " + latitude);
         }
 
     }
